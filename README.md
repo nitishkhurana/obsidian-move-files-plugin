@@ -3,12 +3,9 @@
 When editing a note, open command pallete and run 
 **"Move Files Plugin: Move linked files and update links"**. 
 This will create a folder with Name:
-"{NoteName} files" and move all the linked files for e.g. png,pdf,jpg...etc to this folder. It will also udpate the links in the note.
+"{filename} files" and move all the linked files for e.g. png,pdf,jpg...etc to this folder. It will also udpate the links in the note.    
 
-## Example
-
-
-
+## Example   
 ![Demo](Demo.png)
 
 
@@ -17,4 +14,17 @@ Run the command and all the files are moved to the folder as shown below.
 
 ![FilesMoved](MovedFilesDemo.png)
 
+  
+<br>
 
+## Tip
+
+Use the https://github.com/reorx/obsidian-paste-image-rename   
+plugin to automatically rename the copied images/file's as per you custom settings.
+
+
+## Acknowledgement
+
+Developed it to keep the note and their linked files organised so as to keep the vault clean and  organized.   
+Inspired from the Image Collector Plugin
+https://github.com/tdaykin/obsidian_image_collector  
