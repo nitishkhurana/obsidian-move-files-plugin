@@ -1,0 +1,11 @@
+{
+	"id": "move-files-plugin",
+	"name": "Move Files Plugin",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Moves all the files linked to a open md file to a folder and updates the link in md file.",
+	"author": "Obsidian",
+	"authorUrl": "",
+	"fundingUrl": "",
+	"isDesktopOnly": false
+}
