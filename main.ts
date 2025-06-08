@@ -12,9 +12,11 @@ export default class MoveFilesPlugin extends Plugin {
                 const activeFile = this.app.workspace.getActiveFile();
                 // Check if there's an active file and it's a markdown file
                 if (activeFile && activeFile instanceof TFile && activeFile.extension === 'md') {
-                    // Call the export function with the active file
+                    //If the check is true then the command will be shown to the user else the command is not visible
+                    //If it is true then the callback is called with checking as false, so execute the command
                     if(!checking)
                     {
+                        // Call the export function with the active file
                         this.moveFilesToANewFolder(activeFile);
                     }
                     return true;
@@ -68,7 +70,6 @@ export default class MoveFilesPlugin extends Plugin {
 					if(!targetFile)
 					{
 						await this.app.fileManager.renameFile(fileItem,targetPath);
-						//await this.app.vault.delete(fileItem);
 
 						//update the links in open md file
 						const view = this.app.workspace.getActiveViewOfType(MarkdownView);
