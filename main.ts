@@ -1,4 +1,4 @@
-import { App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, FileManager, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 
 export default class MoveFilesPlugin extends Plugin {
 
@@ -7,16 +7,19 @@ export default class MoveFilesPlugin extends Plugin {
 		this.addCommand({
             id: 'move-linked-files',
             name: 'Move linked files and update links',
-            callback: () => {
+            checkCallback: (checking: boolean) => {
                 // Obtain the current active file
                 const activeFile = this.app.workspace.getActiveFile();
                 // Check if there's an active file and it's a markdown file
                 if (activeFile && activeFile instanceof TFile && activeFile.extension === 'md') {
                     // Call the export function with the active file
-                    this.moveFilesToANewFolder(activeFile);
-                } else {
-                    new Notice('No active md file.');
+                    if(!checking)
+                    {
+                        this.moveFilesToANewFolder(activeFile);
+                    }
+                    return true;
                 }
+                    return false;
             },
         });
 	}
@@ -27,11 +30,11 @@ export default class MoveFilesPlugin extends Plugin {
 
 	async moveFilesToANewFolder(file: TFile) {
         const fileContent = await this.app.vault.read(file);
-        const imageRegex = /!\[\[(.*?)\]\]|!\[(.*?)\]\((.*?)(?:\|.*?)?\)/g;
+        const embedFilesRegex = /!\[\[(.*?)\]\]|!\[(.*?)\]\((.*?)(?:\|.*?)?\)/g;
         let match;
         const files = [];
 
-        while ((match = imageRegex.exec(fileContent)) !== null) {
+        while ((match = embedFilesRegex.exec(fileContent)) !== null) {
             let filePath = match[1] || match[3];
             if (filePath) {
                 filePath = decodeURIComponent(filePath.trim());
@@ -64,8 +67,8 @@ export default class MoveFilesPlugin extends Plugin {
 					
 					if(!targetFile)
 					{
-						await this.app.vault.copy(fileItem,targetPath);
-						await this.app.vault.delete(fileItem);
+						await this.app.fileManager.renameFile(fileItem,targetPath);
+						//await this.app.vault.delete(fileItem);
 
 						//update the links in open md file
 						const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -84,7 +87,7 @@ export default class MoveFilesPlugin extends Plugin {
 					}
 					else
 					{
-						new Notice(`Did not Move ${fileItem.name} to ${targetPath} as file already exists`);
+						new Notice(`Did not move ${fileItem.name} to ${targetPath} as file already exists`);
 					}
 
                 } catch (error) {

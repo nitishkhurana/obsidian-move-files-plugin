@@ -5,7 +5,6 @@
 	"minAppVersion": "0.15.0",
 	"description": "Moves all the files linked to a open md file to a folder and updates the link in md file.",
 	"author": "Nitish Khurana",
-	"authorUrl": "",
-	"fundingUrl": "",
+	"authorUrl": "https://github.com/nitishkhurana",
 	"isDesktopOnly": false
 }
