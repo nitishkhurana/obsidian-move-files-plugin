@@ -1,4 +1,4 @@
-import { App, FileManager, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, FileManager, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 
 export default class MoveFilesPlugin extends Plugin {
 
@@ -31,19 +31,14 @@ export default class MoveFilesPlugin extends Plugin {
 	}
 
 	async moveFilesToANewFolder(file: TFile) {
-        const fileContent = await this.app.vault.read(file);
-        const embedFilesRegex = /!\[\[(.*?)\]\]|!\[(.*?)\]\((.*?)(?:\|.*?)?\)/g;
-        let match;
         const files = [];
 
-        while ((match = embedFilesRegex.exec(fileContent)) !== null) {
-            let filePath = match[1] || match[3];
-            if (filePath) {
-                filePath = decodeURIComponent(filePath.trim());
-                if (filePath.includes('|')) {
-                    filePath = filePath.split('|')[0];
-                }
-                files.push(filePath);
+        const embeds = this.app.metadataCache.getFileCache(file)?.embeds ?? [];
+        const fileLinks = embeds.map(embed => this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path)).filter(file => file?.extension !== 'md');
+
+        for (const file of fileLinks) {
+            if (file instanceof TFile) {
+                files.push(file.path);
             }
         }
 
@@ -54,7 +49,7 @@ export default class MoveFilesPlugin extends Plugin {
 
         const targetFolderName = `${file.basename} files`;
 		const folderExists = this.app.vault.getAbstractFileByPath(targetFolderName);
-		if (!folderExists) 
+		if (!(folderExists instanceof TFolder) )
 		{
 			await this.app.vault.createFolder(targetFolderName).catch(() => {});
 		}
@@ -67,7 +62,7 @@ export default class MoveFilesPlugin extends Plugin {
                     const targetPath = `${targetFolderName}/${fileItem.name}`;
 					const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
 					
-					if(!targetFile)
+					if(!(targetFile instanceof TFile))
 					{
 						await this.app.fileManager.renameFile(fileItem,targetPath);
 
