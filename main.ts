@@ -1,8 +1,21 @@
-import { App, FileManager, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+import { App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+
+    interface MoveFilesPluginSettings {
+            moveMdFile: boolean;
+    }
+
+    const DEFAULT_SETTINGS: MoveFilesPluginSettings = {
+            moveMdFile: false,
+    };
+
+    
 
 export default class MoveFilesPlugin extends Plugin {
+        settings: MoveFilesPluginSettings = DEFAULT_SETTINGS;
 
 	async onload() {
+
+        await this.loadSettings();
 
 		this.addCommand({
             id: 'move-linked-files',
@@ -24,6 +37,30 @@ export default class MoveFilesPlugin extends Plugin {
                     return false;
             },
         });
+
+        this.addSettingTab(new class extends PluginSettingTab {
+            plugin: MoveFilesPlugin;
+            constructor(app: App, plugin: MoveFilesPlugin) {
+                super(app, plugin);
+                this.plugin = plugin;
+            }
+
+            display(): void {
+                const { containerEl } = this;
+                containerEl.empty();
+                containerEl.createEl('h2', { text: 'Move Files Plugin Settings' });
+
+                new Setting(containerEl)
+                .setName('Move the current open markdown file itself')
+                .setDesc('If enabled, the markdown file will also be moved to the new folder.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.moveMdFile)
+                    .onChange(async (value) => {
+                    this.plugin.settings.moveMdFile = value;
+                    await this.plugin.saveSettings();
+                    }));
+            }
+            }(this.app, this));
 	}
 
 	onunload() {
@@ -40,6 +77,11 @@ export default class MoveFilesPlugin extends Plugin {
             if (file instanceof TFile) {
                 files.push(file.path);
             }
+        }
+
+        if (this.settings.moveMdFile) {
+            // If the setting is enabled, include the markdown file itself
+            files.push(file.path);
         }
 
         if (files.length === 0) {
@@ -95,5 +137,13 @@ export default class MoveFilesPlugin extends Plugin {
                 console.error(`File not found: ${filePath}`);
             }
         }
+    }
+
+    async loadSettings() {
+            this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+
+    async saveSettings() {
+            await this.saveData(this.settings);
     }
 }
