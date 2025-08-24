@@ -1,19 +1,39 @@
-# Finshots Daily Plugin
+# Move Files Plugin
 
-An Obsidian plugin that fetches and displays the latest articles from Finshots Daily in a dedicated sidebar view.
+When editing a note, open command pallete and run 
+**"Move Files Plugin: Move linked files and update links"**. 
+This will create a folder with Name:
+"{filename} files" and move all the linked files for e.g. png,pdf,jpg...etc to this folder. It will also udpate the links in the note.
 
-## Features
+### Updates
+Version 1.1.0 : Added support for moving the open note/md files also to the folder.
 
-- **Daily Article Display**: Shows the latest Finshots article with title, image, and summary
-- **Auto-refresh**: Automatically refreshes daily at 9 AM
-- **Manual Refresh**: Click the refresh button to update the content anytime
+## Settings
+Select the below setting to move the open note/md file as well to the folder created.
 
-## Usage
+![Move Files Setting](Settings.png)
 
-### Opening the Finshots View
 
-1. **Ribbon Icon**: Click the newspaper icon in the left ribbon
-2. **Command Palette**: Use Ctrl/Cmd+P and search for "Open Finshots Daily"
-3. The view will open in the right sidebar by default
+## Example   
+![Demo](Demo.png)
 
-**Note**: This plugin is not officially affiliated with Finshots. It's a community-created tool for Obsidian users who want convenient access to Finshots content.
+
+
+Run the command and all the files are moved to the folder as shown below.
+
+![FilesMoved](MovedFilesDemo.png)
+
+  
+<br>
+
+## Tip
+
+Use the https://github.com/reorx/obsidian-paste-image-rename   
+plugin to automatically rename the copied images/file's as per you custom settings.
+
+
+## Acknowledgement
+
+Developed it to keep the note and their linked files organised so as to keep the vault clean and  organized.   
+Inspired from the Image Collector Plugin
+https://github.com/tdaykin/obsidian_image_collector  
