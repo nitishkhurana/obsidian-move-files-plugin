@@ -1,9 +1,9 @@
 {
-	"id": "move-files",
-	"name": "Move Files",
-	"version": "1.1.0",
+	"id": "finshots-daily",
+	"name": "Finshots Daily Article",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Moves all the files linked to a open md file to a folder and updates the link in md file.",
+	"description": "A plugin to fetch and display the latest Finshots Daily articles",
 	"author": "Nitish Khurana",
 	"authorUrl": "https://github.com/nitishkhurana",
 	"isDesktopOnly": false
