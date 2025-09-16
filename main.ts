@@ -7,7 +7,7 @@ import { App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TF
 
     const DEFAULT_SETTINGS: MoveFilesPluginSettings = {
             moveMdFile: false,
-            retainFolderStructure: true,
+            retainFolderStructure: true
     };
 
     
@@ -85,7 +85,6 @@ export default class MoveFilesPlugin extends Plugin {
         const embeds = this.app.metadataCache.getFileCache(file)?.embeds ?? [];
         const fileLinks = embeds.map(embed => this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path)).filter(file => file?.extension !== 'md');
 
-        
         for (const file of fileLinks) {
             if (file instanceof TFile) {
                 files.push(file.path);
@@ -101,8 +100,13 @@ export default class MoveFilesPlugin extends Plugin {
             new Notice('No linked files found in the markdown file.');
             return;
         }
-        
+
         var existingFolderPath = file.parent?.path;
+        if(!this.settings.retainFolderStructure)
+        {
+            existingFolderPath = "";
+        }
+
         const targetFolderName = `${existingFolderPath}/${file.basename} files`;
 		const folderExists = this.app.vault.getAbstractFileByPath(targetFolderName);
 		if (!(folderExists instanceof TFolder) )
