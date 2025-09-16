@@ -6,13 +6,10 @@ This will create a folder with Name:
 "{filename} files" and move all the linked files for e.g. png,pdf,jpg...etc to this folder. It will also udpate the links in the note.
 
 ### Updates
-Version 1.2.0 : Added support for retaining the folder structure while creating the new folder.
 Version 1.1.0 : Added support for moving the open note/md files also to the folder.
 
 ## Settings
-Select the below setting to 
-1. Move the open note/md file as well to the folder created.
-2. Retain the folder structure while creating the new folder.
+Select the below setting to move the open note/md file as well to the folder created.
 
 ![Move Files Setting](Settings.png)
 

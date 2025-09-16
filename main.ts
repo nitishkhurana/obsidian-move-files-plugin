@@ -2,12 +2,10 @@ import { App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TF
 
     interface MoveFilesPluginSettings {
             moveMdFile: boolean;
-            retainFolderStructure: boolean;
     }
 
     const DEFAULT_SETTINGS: MoveFilesPluginSettings = {
             moveMdFile: false,
-            retainFolderStructure: true,
     };
 
     
@@ -61,16 +59,6 @@ export default class MoveFilesPlugin extends Plugin {
                     this.plugin.settings.moveMdFile = value;
                     await this.plugin.saveSettings();
                     }));
-
-                new Setting(containerEl)
-                .setName('Retain folder structure')
-                .setDesc('If enabled, the new folder will be created in the same directory as the original markdown file. If disabled, the new folder will be created in the root directory of the vault.')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.retainFolderStructure)
-                    .onChange(async (value) => {
-                    this.plugin.settings.retainFolderStructure = value;
-                    await this.plugin.saveSettings();
-                    }));
             }
             }(this.app, this));
 	}
@@ -100,13 +88,8 @@ export default class MoveFilesPlugin extends Plugin {
             new Notice('No linked files found in the markdown file.');
             return;
         }
-        
-        var existingFolderPath = file.parent?.path;
-        if(!this.settings.retainFolderStructure)
-        {
-            existingFolderPath = "";
-        }
-        const targetFolderName = `${existingFolderPath}/${file.basename} files`;
+
+        const targetFolderName = `${file.basename} files`;
 		const folderExists = this.app.vault.getAbstractFileByPath(targetFolderName);
 		if (!(folderExists instanceof TFolder) )
 		{
