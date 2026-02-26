@@ -1,4 +1,4 @@
-import { App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 
     interface MoveFilesPluginSettings {
             moveMdFile: boolean;
@@ -63,7 +63,7 @@ export default class MoveFilesPlugin extends Plugin {
                     }));
 
                 new Setting(containerEl)
-                .setName('Retain folder structure (Not implemented yet)')
+                .setName('Retain folder structure')
                 .setDesc('If enabled, the original folder structure of the linked files will be retained in the new folder. If disabled, the new folder will be created in the root directory of the vault.')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.retainFolderStructure)
@@ -80,23 +80,25 @@ export default class MoveFilesPlugin extends Plugin {
 	}
 
 	async moveFilesToANewFolder(file: TFile) {
-        const files = [];
+        const filesToMove = new Map<string, TFile>();
 
-        const embeds = this.app.metadataCache.getFileCache(file)?.embeds ?? [];
-        const fileLinks = embeds.map(embed => this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path)).filter(file => file?.extension !== 'md');
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        const embeds = fileCache?.embeds ?? [];
+        const links = fileCache?.links ?? [];
 
-        for (const file of fileLinks) {
-            if (file instanceof TFile) {
-                files.push(file.path);
-            }
+        const linkedFiles = [...embeds, ...links]
+            .map((linkItem) => this.app.metadataCache.getFirstLinkpathDest(linkItem.link, file.path))
+            .filter((linkedFile): linkedFile is TFile => linkedFile instanceof TFile && linkedFile.extension !== 'md');
+
+        for (const linkedFile of linkedFiles) {
+            filesToMove.set(linkedFile.path, linkedFile);
         }
 
         if (this.settings.moveMdFile) {
-            // If the setting is enabled, include the markdown file itself
-            files.push(file.path);
+            filesToMove.set(file.path, file);
         }
 
-        if (files.length === 0) {
+        if (filesToMove.size === 0) {
             new Notice('No linked files found in the markdown file.');
             return;
         }
@@ -106,52 +108,33 @@ export default class MoveFilesPlugin extends Plugin {
         {
             existingFolderPath = "";
         }
-        const targetFolderName = `${existingFolderPath}/${file.basename} files`;
+        const targetFolderName = existingFolderPath ? `${existingFolderPath}/${file.basename} files` : `${file.basename} files`;
 		const folderExists = this.app.vault.getAbstractFileByPath(targetFolderName);
 		if (!(folderExists instanceof TFolder) )
 		{
 			await this.app.vault.createFolder(targetFolderName).catch(() => {});
 		}
 
-        for (const filePath of files) {
-            const fileItem = this.app.metadataCache.getFirstLinkpathDest(filePath, file.path);
+        for (const fileItem of filesToMove.values()) {
+            try {
+                const sourcePath = fileItem.path;
+                const targetPath = `${targetFolderName}/${fileItem.name}`;
+                const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
 
-            if (fileItem instanceof TFile) {
-                try {
-                    const targetPath = `${targetFolderName}/${fileItem.name}`;
-					const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
-					
-					if(!(targetFile instanceof TFile))
-					{
-						await this.app.fileManager.renameFile(fileItem,targetPath);
-
-						//update the links in open md file
-						const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-
-						// Make sure the user is editing a Markdown file.
-						if (view) {
-							const line = view.editor.getValue();
-							const updatedLine = line.replace(fileItem.name,targetPath);
-							view.editor.setValue(updatedLine);
-						}
-						else {
-							new Notice(`Failed to rename ${targetPath}: no active editor`)
-							return
-						}
-						new Notice(`Moved ${fileItem.name} to ${targetPath} and updated the links`);
-					}
-					else
-					{
-						new Notice(`Did not move ${fileItem.name} to ${targetPath} as file already exists`);
-					}
-
-                } catch (error) {
-                    new Notice(`Failed to move file ${fileItem.name}: ${error}`);
-                    console.error(`Failed to move file ${fileItem.name}:`, error);
+                if (sourcePath === targetPath) {
+                    continue;
                 }
-            } else {
-                new Notice(`File not found: ${filePath}`);
-                console.error(`File not found: ${filePath}`);
+
+                if (targetFile instanceof TFile) {
+                    new Notice(`Did not move ${fileItem.name} to ${targetPath} as file already exists`);
+                    continue;
+                }
+
+                await this.app.fileManager.renameFile(fileItem, targetPath);
+                new Notice(`Moved ${fileItem.name} to ${targetPath}`);
+            } catch (error) {
+                new Notice(`Failed to move file ${fileItem.name}: ${error}`);
+                console.error(`Failed to move file ${fileItem.name}:`, error);
             }
         }
     }
