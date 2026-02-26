@@ -63,7 +63,7 @@ export default class MoveFilesPlugin extends Plugin {
                     }));
 
                 new Setting(containerEl)
-                .setName('Retain folder structure')
+                .setName('Retain folder structure (Not implemented yet)')
                 .setDesc('If enabled, the original folder structure of the linked files will be retained in the new folder. If disabled, the new folder will be created in the root directory of the vault.')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.retainFolderStructure)
@@ -80,25 +80,23 @@ export default class MoveFilesPlugin extends Plugin {
 	}
 
 	async moveFilesToANewFolder(file: TFile) {
-        const filesToMove = new Map<string, TFile>();
+        const files = [];
 
-        const fileCache = this.app.metadataCache.getFileCache(file);
-        const embeds = fileCache?.embeds ?? [];
-        const links = fileCache?.links ?? [];
+        const embeds = this.app.metadataCache.getFileCache(file)?.embeds ?? [];
+        const fileLinks = embeds.map(embed => this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path)).filter(file => file?.extension !== 'md');
 
-        const linkedFiles = [...embeds, ...links]
-            .map((linkItem) => this.app.metadataCache.getFirstLinkpathDest(linkItem.link, file.path))
-            .filter((linkedFile): linkedFile is TFile => linkedFile instanceof TFile && linkedFile.extension !== 'md');
-
-        for (const linkedFile of linkedFiles) {
-            filesToMove.set(linkedFile.path, linkedFile);
+        for (const file of fileLinks) {
+            if (file instanceof TFile) {
+                files.push(file.path);
+            }
         }
 
         if (this.settings.moveMdFile) {
-            filesToMove.set(file.path, file);
+            // If the setting is enabled, include the markdown file itself
+            files.push(file.path);
         }
 
-        if (filesToMove.size === 0) {
+        if (files.length === 0) {
             new Notice('No linked files found in the markdown file.');
             return;
         }
@@ -115,26 +113,31 @@ export default class MoveFilesPlugin extends Plugin {
 			await this.app.vault.createFolder(targetFolderName).catch(() => {});
 		}
 
-        for (const fileItem of filesToMove.values()) {
-            try {
-                const sourcePath = fileItem.path;
-                const targetPath = `${targetFolderName}/${fileItem.name}`;
-                const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
+        for (const filePath of files) {
+            const fileItem = this.app.metadataCache.getFirstLinkpathDest(filePath, file.path);
 
-                if (sourcePath === targetPath) {
-                    continue;
+            if (fileItem instanceof TFile) {
+                try {
+                    const targetPath = `${targetFolderName}/${fileItem.name}`;
+					const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
+					
+					if(!(targetFile instanceof TFile))
+					{
+						await this.app.fileManager.renameFile(fileItem,targetPath);
+                        new Notice(`Moved ${fileItem.name} to ${targetPath}`);
+					}
+					else
+					{
+						new Notice(`Did not move ${fileItem.name} to ${targetPath} as file already exists`);
+					}
+
+                } catch (error) {
+                    new Notice(`Failed to move file ${fileItem.name}: ${error}`);
+                    console.error(`Failed to move file ${fileItem.name}:`, error);
                 }
-
-                if (targetFile instanceof TFile) {
-                    new Notice(`Did not move ${fileItem.name} to ${targetPath} as file already exists`);
-                    continue;
-                }
-
-                await this.app.fileManager.renameFile(fileItem, targetPath);
-                new Notice(`Moved ${fileItem.name} to ${targetPath}`);
-            } catch (error) {
-                new Notice(`Failed to move file ${fileItem.name}: ${error}`);
-                console.error(`Failed to move file ${fileItem.name}:`, error);
+            } else {
+                new Notice(`File not found: ${filePath}`);
+                console.error(`File not found: ${filePath}`);
             }
         }
     }
