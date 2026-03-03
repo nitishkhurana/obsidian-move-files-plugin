@@ -15,6 +15,71 @@ import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from '
 export default class MoveFilesPlugin extends Plugin {
         settings: MoveFilesPluginSettings = DEFAULT_SETTINGS;
 
+    private normalizePath(inputPath: string): string {
+        return inputPath.replace(/\\/g, '/');
+    }
+
+    private extractLinkpath(rawLink: string): string {
+        const aliasIndex = rawLink.indexOf('|');
+        const subpathIndex = rawLink.indexOf('#');
+
+        let endIndex = rawLink.length;
+        if (aliasIndex >= 0) {
+            endIndex = Math.min(endIndex, aliasIndex);
+        }
+        if (subpathIndex >= 0) {
+            endIndex = Math.min(endIndex, subpathIndex);
+        }
+
+        return rawLink.slice(0, endIndex).trim();
+    }
+
+    private replaceLinkpathPreservingContext(rawLink: string, newLinkpath: string): string {
+        const aliasIndex = rawLink.indexOf('|');
+        const subpathIndex = rawLink.indexOf('#');
+
+        let endIndex = rawLink.length;
+        if (aliasIndex >= 0) {
+            endIndex = Math.min(endIndex, aliasIndex);
+        }
+        if (subpathIndex >= 0) {
+            endIndex = Math.min(endIndex, subpathIndex);
+        }
+
+        return `${newLinkpath}${rawLink.slice(endIndex)}`;
+    }
+
+    private escapeRegex(input: string): string {
+        return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    private updateLinksInText(
+        markdownText: string,
+        activeFilePath: string,
+        movedFileByOldPath: Map<string, TFile>,
+    ): string {
+        return markdownText.replace(/(!?\[\[)([^\]]+)(\]\])/g, (fullMatch, open, rawLink, close) => {
+            const linkpath = this.extractLinkpath(rawLink);
+            if (!linkpath) {
+                return fullMatch;
+            }
+
+            const resolved = this.app.metadataCache.getFirstLinkpathDest(linkpath, activeFilePath);
+            if (!(resolved instanceof TFile)) {
+                return fullMatch;
+            }
+
+            const movedTarget = movedFileByOldPath.get(this.normalizePath(resolved.path));
+            if (!movedTarget) {
+                return fullMatch;
+            }
+
+            const replacementLinkpath = this.app.metadataCache.fileToLinktext(movedTarget, activeFilePath, true);
+            const updatedRawLink = this.replaceLinkpathPreservingContext(rawLink, replacementLinkpath);
+            return `${open}${updatedRawLink}${close}`;
+        });
+    }
+
 	async onload() {
 
         await this.loadSettings();
@@ -103,17 +168,27 @@ export default class MoveFilesPlugin extends Plugin {
             return;
         }
         
-        var existingFolderPath = file.parent?.path;
-        if(!this.settings.retainFolderStructure)
-        {
-            existingFolderPath = "";
+        const parentFolder = file.parent;
+        let existingFolderPath = parentFolder?.path;
+        if (!this.settings.retainFolderStructure) {
+            existingFolderPath = '';
         }
-        const targetFolderName = existingFolderPath ? `${existingFolderPath}/${file.basename} files` : `${file.basename} files`;
+
+        const folderSuffix = `${file.basename} files`;
+        const fileAlreadyInTargetFolder = parentFolder?.name === folderSuffix;
+        const targetFolderName = this.settings.retainFolderStructure && fileAlreadyInTargetFolder
+            ? parentFolder?.path ?? folderSuffix
+            : existingFolderPath
+                ? `${existingFolderPath}/${folderSuffix}`
+                : folderSuffix;
 		const folderExists = this.app.vault.getAbstractFileByPath(targetFolderName);
 		if (!(folderExists instanceof TFolder) )
 		{
 			await this.app.vault.createFolder(targetFolderName).catch(() => {});
 		}
+
+        const originalMarkdownPath = this.normalizePath(file.path);
+        const movedFileByOldPath = new Map<string, TFile>();
 
         for (const fileItem of filesToMove.values()) {
             try {
@@ -130,12 +205,21 @@ export default class MoveFilesPlugin extends Plugin {
                     continue;
                 }
 
-                await this.app.fileManager.renameFile(fileItem, targetPath);
+                movedFileByOldPath.set(this.normalizePath(sourcePath), fileItem);
+                await this.app.vault.rename(fileItem, targetPath);
                 new Notice(`Moved ${fileItem.name} to ${targetPath}`);
             } catch (error) {
                 new Notice(`Failed to move file ${fileItem.name}: ${error}`);
                 console.error(`Failed to move file ${fileItem.name}:`, error);
             }
+        }
+
+        const movedMarkdownFile = movedFileByOldPath.get(originalMarkdownPath) ?? file;
+        const currentMarkdownText = await this.app.vault.read(movedMarkdownFile);
+        const updatedMarkdownText = this.updateLinksInText(currentMarkdownText, movedMarkdownFile.path, movedFileByOldPath);
+
+        if (updatedMarkdownText !== currentMarkdownText) {
+            await this.app.vault.modify(movedMarkdownFile, updatedMarkdownText);
         }
     }
 
